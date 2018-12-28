@@ -88,10 +88,6 @@
         this.scroll && this.scroll.enable()
       },
       refresh() {
-        if (this.scroll) {
-          console.log(this.scroll)
-        }
-
         this.scroll && this.scroll.refresh()
       },
       scrollTo() {

@@ -1,30 +1,30 @@
 <template>
   <transition name="list-fade">
-    <div class="playlist" v-show="showFlag">
-      <div class="list-wrapper">
+    <div class="playlist" v-show="showFlag" @click="hide">
+      <div class="list-wrapper" @click.stop>
         <div class="list-header">
           <h1 class="title">
-            <i class="icon"></i>
-            <span class="text"></span>
-            <span class="clear"><i class="icon-clear"></i></span>
+            <i class="icon" :class="iconMode" @click="changeMode"></i>
+            <span class="text">{{modeText}}</span>
+            <span class="clear" @click="showConfirm"><i class="icon-clear"></i></span>
           </h1>
         </div>
-        <div class="list-content">
-          <ul>
-            <li class="item">
-              <i class="current"></i>
-              <span class="text"></span>
+        <scroll class="list-content" :data="sequenceList" ref="listContent">
+          <transition-group name="list" tag="ul">
+            <li :key="item.id" ref="listItem" class="item" v-for="(item,index) in sequenceList" @click="selectItem(item,index)">
+              <i class="current" :class="getCurrentIcon(item)"></i>
+              <span class="text">{{item.name}}</span>
               <span class="like">
                 <i class="icon-not-favorite"></i>
               </span>
-              <span class="delete">
+              <span class="delete" @click.stop="deleteOne(item)">
                 <i class="icon-delete"></i>
               </span>
             </li>
-          </ul>
-        </div>
+          </transition-group>
+        </scroll>
         <div class="list-operate">
-          <div class="add">
+          <div class="add" @click="addSong">
             <i class="icon-add"></i>
             <span class="text">添加歌曲队列</span>
           </div>
@@ -33,23 +33,89 @@
           <span>关闭</span>
         </div>
       </div>
+      <confirm ref="confirm" text="是否清空播放列表" confirmBtnText="清空" @confirm="confirmClear"></confirm>
+      <add-song ref="addSong"></add-song>
     </div>
   </transition>
 </template>
 
 <script>
+  import {mapGetters,mapMutations, mapActions} from 'vuex'
+  import addSong from '../../components/add-song/add-song'
+  import Scroll from '../../base/scroll/scroll'
+  import {playMode} from '../../common/js/config'
+  import Confirm from '../../base/confirm/confirm'
+  import {playerMixin} from '../../common/js/mixin'
+
   export default {
+    mixins: [playerMixin],
+    components: {Confirm, Scroll, addSong},
+    computed: {
+      modeText() {
+        return this.mode === playMode.sequence ? '顺序播放' : this.mode === playMode.random ? '随即播放' : '单曲循环'
+      }
+    },
     data() {
       return {
         showFlag: false
       }
     },
     methods: {
+      addSong() {
+        this.$refs.addSong.show()
+      },
+      selectItem(item,index) {
+        if (this.mode === playMode.random) {
+          index = this.playlist.findIndex((song) => {
+            return song.id === item.id
+          })
+        }
+        this.setCurrentIndex(index)
+        this.setPlayingState(true)
+      },
+      getCurrentIcon(item) {
+        return this.currentSong.id === item.id ? 'icon-play' : ''
+      },
+      scrollToCurrent(current) {
+        const index = this.sequenceList.findIndex((song) => {
+          return current.id === song.id
+        })
+        this.$refs.listContent.scrollToElement(this.$refs.listItem[index], 300)
+      },
+      deleteOne(item) {
+        this.deleteSong(item)
+        if (!this.playlist.length) {
+          this.hide()
+        }
+      },
+      showConfirm() {
+        this.$refs.confirm.show()
+      },
+      confirmClear() {
+        this.deleteSongList()
+        this.hide()
+      },
       show() {
         this.showFlag = true
+        setTimeout(()=> {
+          this.$refs.listContent.refresh()
+          this.scrollToCurrent(this.currentSong)
+        }, 20)
       },
       hide() {
         this.showFlag = false
+      },
+      ...mapActions([
+        'deleteSong',
+        'deleteSongList'
+      ])
+    },
+    watch: {
+      currentSong(newSong, oldSong) {
+        if (!this.showFlag || newSong.id === oldSong.id) {
+          return
+        }
+        this.scrollToCurrent(newSong)
       }
     }
   }

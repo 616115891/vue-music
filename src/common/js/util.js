@@ -3,7 +3,7 @@ function getRandomInt(min, max) {
 }
 
 export function shuffle(arr) {
-  let _arr = JSON.parse(JSON.stringify(arr));
+  let _arr = arr.slice()
   for (let i = 0; i < _arr.length; i++) {
     let j = getRandomInt(0, i)
     let t = _arr[i]
